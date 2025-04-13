@@ -1,6 +1,10 @@
+//Eesha Pedakota
+//22BCE3637
+ 
 #include <Arduino.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
+#include <LiquidCrystal_I2C.h>
 
 // DS18B20 Configuration
 #define ONE_WIRE_BUS 15       // GPIO15 for DS18B20 data
@@ -13,6 +17,9 @@ DallasTemperature sensors(&oneWire);
 // Pin Definitions
 #define ALERT_LED 2           // LED pin
 #define BUZZER_PIN 4          // Buzzer pin
+
+// LCD Configuration
+LiquidCrystal_I2C lcd(0x27, 16, 2); // I2C address 0x27, 16 columns, 2 rows
 
 // Mock OBD-II parameters with initial values
 String engineRPM = "1200";
@@ -49,7 +56,13 @@ void setup() {
   pinMode(POT_PIN, INPUT);
   
   sensors.begin(); // Initialize DS18B20
+  lcd.init();      // Initialize LCD
+  lcd.backlight(); // Turn on backlight
   
+  lcd.setCursor(0, 0);
+  lcd.print("Vehicle System");
+  delay(2000); // Display startup message for 2 seconds
+ 
   Serial.println("\n============================================");
   Serial.println("Enhanced Vehicle Diagnostics System");
   Serial.println("============================================");
@@ -88,7 +101,13 @@ void loop() {
   
   // Check and generate DTCs based on current parameters
   checkAndGenerateDTCs(currentTemp);
-  
+
+  //Control LED based on DTC status
+  if (hasDTCs) {
+    digitalWrite(ALERT_LED, HIGH); // Turn on LED if there are active DTCs
+  } else {
+    digitalWrite(ALERT_LED, LOW); // Turn off LED if no DTCs are active
+  }
   // Display enhanced dashboard
   displayEnhancedDashboard(currentTemp);
   
@@ -97,6 +116,9 @@ void loop() {
     displayDTCs();
   }
   
+  // Update LCD display with diagnostics data
+  updateLCD(currentTemp);
+
   delay(5000); // Update every cycle (5 seconds)
 }
 
@@ -251,6 +273,45 @@ void clearDTCs() {
   engineCheck = false;
 }
 
+void updateLCD(float temp) {
+    lcd.clear();
+    
+    lcd.setCursor(0,0);
+    lcd.print("RPM: ");
+    lcd.print(engineRPM);
+    
+    lcd.setCursor(9,0);
+    lcd.print("Cool: ");
+    lcd.print(temp,1);
+    
+    lcd.setCursor(0,1);
+    lcd.print("Batt: ");
+    lcd.print(batteryVoltage+"V");
+
+    lcd.setCursor(9,1);
+    lcd.print("Spd: ");
+    lcd.print(speed+"km/h");
+
+     // Display DTC warnings if there are active DTCs
+    if (hasDTCs) {
+        delay(2000); // Show diagnostics first
+        lcd.clear();
+        lcd.setCursor(0,0);
+        lcd.print("Active DTC:");
+        
+        for (int i=0; i<3; i++) {
+            if (activeDTCs[i] != "") {
+                lcd.setCursor(0,0);
+                lcd.print("ALERT DTC:");
+                lcd.setCursor(0,1);
+                lcd.print(activeDTCs[i].substring(0,5));
+                delay(2000); // Show each DTC for a while
+            }
+        }
+        
+        delay(2000); // Return to diagnostics after showing DTCs
+    }
+}
 void runBuzzerTest() {
   unsigned long currentTime = millis();
   unsigned long elapsedTime = currentTime - buzzerTestStartTime;
@@ -274,7 +335,6 @@ void runBuzzerTest() {
 }
 
 void sendAlert(String message) {
-  digitalWrite(ALERT_LED, HIGH);
   digitalWrite(BUZZER_PIN, HIGH);
   
   Serial.println("\n⚠️ ALERT ⚠️");
