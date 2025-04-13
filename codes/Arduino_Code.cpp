@@ -27,6 +27,9 @@ SoftwareSerial gsmSerial(RXD1, TXD1); // Use SoftwareSerial for GSM communicatio
 #define ALERT_LED 2           // LED pin
 #define BUZZER_PIN 4          // Buzzer pin
 
+// LCD Configuration
+LiquidCrystal_I2C lcd(0x27, 16, 2); // I2C address 0x27, 16 columns, 2 rows
+
 // Mock OBD-II parameters with initial values
 String engineRPM = "1200";
 String coolantTemp = "82";
@@ -65,6 +68,13 @@ void setup() {
   gpsSerial.begin(9600);      // Initialize GPS module communication at baud rate of 9600
   gsmSerial.begin(9600);      // Initialize GSM module communication at baud rate of 9600
 
+  lcd.init();      // Initialize LCD
+  lcd.backlight(); // Turn on backlight
+  
+  lcd.setCursor(0, 0);
+  lcd.print("Vehicle System");
+  delay(2000); // Display startup message for 2 seconds
+  
   Serial.println("\n============================================");
   Serial.println("Enhanced Vehicle Diagnostics System");
   Serial.println("============================================");
@@ -119,7 +129,8 @@ void loop() {
     sendSMS("+1234567890", "Active DTCs: Check diagnostics.");
     delay(10000); // Send SMS every cycle for testing purposes.
   }
-
+  // Update LCD display with diagnostics data
+  updateLCD(currentTemp);
 }
 
 void updateOBDParameters(float currentTemp) {
@@ -271,6 +282,46 @@ void clearDTCs() {
   }
   hasDTCs = false;
   engineCheck = false;
+}
+
+void updateLCD(float temp) {
+    lcd.clear();
+    
+    lcd.setCursor(0,0);
+    lcd.print("RPM: ");
+    lcd.print(engineRPM);
+    
+    lcd.setCursor(9,0);
+    lcd.print("Cool: ");
+    lcd.print(temp,1);
+    
+    lcd.setCursor(0,1);
+    lcd.print("Batt: ");
+    lcd.print(batteryVoltage+"V");
+
+    lcd.setCursor(9,1);
+    lcd.print("Spd: ");
+    lcd.print(speed+"km/h");
+
+     // Display DTC warnings if there are active DTCs
+    if (hasDTCs) {
+        delay(2000); // Show diagnostics first
+        lcd.clear();
+        lcd.setCursor(0,0);
+        lcd.print("Active DTC:");
+        
+        for (int i=0; i<3; i++) {
+            if (activeDTCs[i] != "") {
+                lcd.setCursor(0,0);
+                lcd.print("ALERT DTC:");
+                lcd.setCursor(0,1);
+                lcd.print(activeDTCs[i].substring(0,5));
+                delay(2000); // Show each DTC for a while
+            }
+        }
+        
+        delay(2000); // Return to diagnostics after showing DTCs
+    }
 }
 
 void runBuzzerTest() {
