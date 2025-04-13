@@ -1,5 +1,6 @@
 # SmartTrack: Intelligent Vehicle Tracking & Monitoring System
-![Screenshot](https://drive.google.com/file/d/1lJ9yVwOWBaV8PKpyW6o-reTQJHxEUlIa/view?usp=sharing)
+
+![Logo](Screenshot 2025-04-13 193349.png)
 
 ## Problem Statement
 
