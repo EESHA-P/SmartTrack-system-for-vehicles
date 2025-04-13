@@ -1,42 +1,41 @@
-
-#include <SoftwareSerial.h>
 #include <TinyGPS++.h>
 #include <Adafruit_FONA.h>
 
 // OBD-II Config
 #define OBD_RX 16
 #define OBD_TX 17
-SoftwareSerial obdSerial(OBD_RX, OBD_TX); // ESP32 pins for OBD-II
+HardwareSerial obdSerial(1); // Use UART1 for OBD-II
 
 // GPS Config
 #define GPS_RX 34
 #define GPS_TX 35
-SoftwareSerial gpsSerial(GPS_RX, GPS_TX);
+HardwareSerial gpsSerial(2); // Use UART2 for GPS
 TinyGPSPlus gps;
 
 // GSM Config
 #define FONA_RST 4
 Adafruit_FONA fona = Adafruit_FONA(FONA_RST);
-SoftwareSerial fonaSS = SoftwareSerial(25, 26); // RX, TX
+HardwareSerial fonaSS(0); // Use UART0 for GSM (default Serial)
 
 // Alert LED
 #define ALERT_LED 2
 
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(115200); // Debugging on default Serial port
+  
   pinMode(ALERT_LED, OUTPUT);
 
   // Initialize OBD-II
-  obdSerial.begin(9600);
+  obdSerial.begin(9600, SERIAL_8N1, OBD_RX, OBD_TX); // RX=16, TX=17
   sendOBDCommand("ATZ"); // Reset OBD-II adapter
   delay(1000);
   sendOBDCommand("ATSP0"); // Auto-protocol
 
   // Initialize GPS
-  gpsSerial.begin(9600);
+  gpsSerial.begin(9600, SERIAL_8N1, GPS_RX, GPS_TX); // RX=34, TX=35
 
   // Initialize GSM
-  fonaSS.begin(4800);
+  fonaSS.begin(4800); // Default RX/TX pins for GSM module on Serial0
   if (!fona.begin(fonaSS)) {
     Serial.println("GSM init failed");
     while (1);
@@ -78,10 +77,17 @@ String getOBDData(String pid) {
 
 void sendAlert(String message) {
   digitalWrite(ALERT_LED, HIGH);
-  fona.sendSMS("+1234567890", message.c_str()); // Replace with your number
+
+  char phoneNumber[] = "+1234567890"; // Replace with your number
+  char smsMessage[160];
+  message.toCharArray(smsMessage, sizeof(smsMessage));
+  
+
+  fona.sendSMS(phoneNumber, smsMessage);
   delay(1000);
   digitalWrite(ALERT_LED, LOW);
 }
+
 
 void sendOBDCommand(String cmd) {
   obdSerial.print(cmd + "\r");
