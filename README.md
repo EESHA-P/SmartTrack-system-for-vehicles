@@ -1,6 +1,6 @@
 # SmartTrack: Intelligent Vehicle Tracking & Monitoring System
 
-![Screenshot](images/img1.png)
+![Screenshot](simulation/img1.png)
 
 # 🚗 SmartTrack System for Vehicles
 
